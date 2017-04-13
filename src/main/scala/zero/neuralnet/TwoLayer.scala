@@ -18,18 +18,22 @@ object TwoLayer {
 
     val Z1 = Sigmoid(X.t * W1 + B1)
     Id(Z1 * W2 + B2)
-
-    //    val Z2 = Sigmoid(Z1 * W2 + B2.t)
-    //    val W3 = DenseMatrix((1.0, 3.0), (2.0, 4.0))
-    //    val B3 = DenseMatrix(1.0, 3.0)
-    //    println(Z2 * W3 + B3.t)
-
-    //    Id(Z2 * W3 + B3.t)
   }
 
   def loss(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) =
-    Loss.cross_entropy(predict(input).toArray.toSeq, teacher.toArray.toSeq)
+    Loss.cross_entropy(predict(input.t).toArray.toSeq, teacher.toArray.toSeq)
     
   def accuracy(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {}
-  def gradient(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {}
+  def gradient(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {
+    val f = (x:DenseMatrix[Double]) => loss(x, teacher)
+    val h = 1e-4
+    val zeroes = List.fill(input.size)(0.0)
+    val dx_vectors = (0 until input.size).map(i => {
+      new DenseMatrix[Double](1, zeroes.take(i) ::: h :: zeroes.drop(i+1) toArray, 0)
+    })
+    
+    dx_vectors.map(dx => {
+      (f(input + dx) - f(input - dx))/ (2 * h)
+    })
+  }
 }
