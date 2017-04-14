@@ -26,7 +26,8 @@ class TwoLayer(val shape: List[Int] = List(2,3,2)) {
   def loss(teacher: DenseMatrix[Double])(input: DenseMatrix[Double]) =
     Loss.cross_entropy(predict(input.t), teacher)
     
-  def accuracy(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {}
+  def accuracy(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = 
+    (if (argmax(predict(input.t))._2 == argmax(teacher)._2) 1 else 0)
   
   def gradient(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {
     val h = 1e-4
