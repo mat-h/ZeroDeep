@@ -18,4 +18,15 @@ object Matrix {
   private def _0s = List.fill(_: Int)(0.0)
   
   def unitVec(dim: Int, i: Int) = new DenseVector[Double](_0s(i) ::: 1.0 :: _0s(dim-i+1) toArray) toDenseMatrix
+  
+  def oneHotMatrix(shape: Tuple2[Int,Int], idx: Tuple2[Int,Int]) = {
+    val _0s = DenseMatrix.zeros[Double](shape._1, shape._2)
+    _0s(idx._1 to idx._1, idx._2 to idx._2) := 1.0
+    _0s
+  }
+  
+  def partialMatrices(m: DenseMatrix[Double]) = {
+    (for (i <- 0 until m.rows; j <- 0 until m.cols) yield (i, j))
+      .map(oneHotMatrix((m.rows, m.cols), _)) 
+  }
 }
