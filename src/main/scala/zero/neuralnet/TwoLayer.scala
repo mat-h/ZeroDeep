@@ -1,9 +1,12 @@
 package zero.neuralnet
 
 import breeze.linalg._
+import java.io.PrintWriter
 
 import zero.functions._
-import zero.util.Matrix.{ randomMatrix, unitVec, partialMatrices }
+import zero.minibatch.Sampler
+import zero.util.Matrix.{ randomMatrix, unitVec, unitsOfMatrix }
+import zero.minibatch.Sampler
 
 class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
 
@@ -45,39 +48,66 @@ class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
     result
   }
 
-  def accuracy(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) =
-    (if (argmax(predict(input.t))._2 == argmax(teacher)._2) 1 else 0)
+  def argmax(seq: Seq[Any]) = seq.zipWithIndex.maxBy(_._2)._1
+
+  def accuracy(input: Seq[DenseMatrix[Double]], teacher: Seq[Double]) =
+    if (argmax(input.map(_.t).map(predict)) == argmax(teacher)) 1 else 0
+
+  var grad: Map[String, Seq[Double]] = Map()
 
   def gradient(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {
     val h = 1e-4
     val f = lossUsing(teacher, input) _
 
-    Map("W1" ->
-      partialMatrices(W1)
+    type Getter = TwoLayer => DenseMatrix[Double]
+    type Setter = TwoLayer => (DenseMatrix[Double] => Unit)
+    
+    def update(param: Getter)(setter: Setter) = {
+      def F(_w: DenseMatrix[Double]): Double = f(setter(_)(_w))
+
+      unitsOfMatrix(param(this))
       .map(_ :*= h)
-      .map(dx => {
-        (f(m => m.W1 = m.W1 + dx) - f(m => m.W1 = m.W1 - dx)) / (2 * h)
-      }),
+      .map(dx => (F(param(this) + dx) - F(param(this) - dx)) / (2 * h))
+    }
 
-      "W2" ->
-        partialMatrices(W2)
-        .map(_ :*= h)
-        .map(dx => {
-          (f(m => m.W2 = m.W2 + dx) - f(m => m.W2 = m.W2 - dx)) / (2 * h)
-        }),
+    grad = Map(
+      "W1" -> update(_.W1)(_.W1_=),
+      "W2" -> update(_.W2)(_.W2_=),
+      "B1" -> update(_.B1)(_.B1_=),
+      "B2" -> update(_.B2)(_.B2_=)
+    )
 
-      "B1" ->
-        partialMatrices(B1)
-        .map(_ :*= h)
-        .map(dx => {
-          (f(m => m.B1 = m.B1 + dx) - f(m => m.B1 = m.B1 - dx)) / (2 * h)
-        }),
+  }
 
-      "B2" ->
-        partialMatrices(B2)
-        .map(_ :*= h)
-        .map(dx => {
-          (f(m => m.B2 = m.B2 + dx) - f(m => m.B2 = m.B2 - dx)) / (2 * h)
-        }))
+  def dump = {
+    println(s"W1 = $W1")
+    println(s"B1 = $B1")
+    println(s"W2 = $W2")
+    println(s"B2 = $B2")
+  }
+}
+
+object TwoLayer {
+  def train(train_data: Seq[(DenseMatrix[Double], Int)]) = {
+    val sampler = new Sampler(train_data)
+    val miniBatch = sampler take (100)
+
+    val logFile = new PrintWriter("log/loss.txt")
+
+    val m = new TwoLayer(List(768, 50, 10))
+
+    def trainOnce =
+      miniBatch.map(p => {
+        val teacher = unitVec(10, p._2)
+        m.gradient(p._1, teacher)
+        def convert(seq: Option[Seq[Double]], rows: Int) = (seq: @unchecked) match { case Some(g) => new DenseMatrix(rows, g.toArray, 0) }
+        convert(m.grad.get("W1"), m.W1.rows)
+        convert(m.grad.get("W2"), m.W2.rows)
+        convert(m.grad.get("B1"), m.B1.rows)
+        convert(m.grad.get("B2"), m.B2.rows)
+        logFile.write(m.loss(teacher)(p._1).toString)
+      })
+
+    for (i <- 0 to 1000) trainOnce
   }
 }

@@ -5,7 +5,7 @@ import scala.io.Source
 import scala.io.Codec
 import breeze.linalg._
 
-object Loader extends App {
+object Loader {
 
   val train_img = (new ImageLoader("train-images-idx3-ubyte.gz")).readAll(0)
   val train_label = (new LabelLoader("train-labels-idx1-ubyte.gz")).readAll(0)

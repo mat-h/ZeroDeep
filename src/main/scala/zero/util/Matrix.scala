@@ -25,7 +25,7 @@ object Matrix {
     _0s
   }
   
-  def partialMatrices(m: DenseMatrix[Double]) = {
+  def unitsOfMatrix(m: DenseMatrix[Double]) = {
     (for (i <- 0 until m.rows; j <- 0 until m.cols) yield (i, j))
       .map(oneHotMatrix((m.rows, m.cols), _)) 
   }

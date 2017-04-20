@@ -7,6 +7,7 @@ abstract class LoadOnce(val fileName: String) {
   type T
   def magic: Int
   val path = s"data/$fileName"
+  if (! new File(path).exists) Loader.download(fileName)
 
   val stream = new DataInputStream(new GZIPInputStream(new FileInputStream(path)))
 
