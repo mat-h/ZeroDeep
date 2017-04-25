@@ -26,7 +26,6 @@ object Matrix {
   }
 
   def variationMatrix(r: Int, c: Int) = {
-    println(r + " x " + c)
     (for (i <- 0 until r; j <- 0 until c) yield (i, j))
       .map(oneHotMatrix((r, c), _))
   }

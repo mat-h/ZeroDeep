@@ -14,6 +14,8 @@ abstract class LoadOnce(val fileName: String) {
   assert(stream.readInt == magic, "Wrong MNIST label stream magic")
 
   var count = stream.readInt
+  var width: Int = 0
+  var height: Int = 0
   readMeta()
 
   def readAll(index: Int): Stream[T] = {

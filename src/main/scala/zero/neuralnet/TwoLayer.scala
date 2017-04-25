@@ -69,7 +69,6 @@ class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
       def F(_w: DenseMatrix[Double]): Double = f(setter(_)(_w))
 
       val in = param(this)
-      println(in.toString() + ", " + in.rows + " x " + in.cols)
     
       variationMatrix(in.rows, in.cols)
       .map(_ :*= h)
