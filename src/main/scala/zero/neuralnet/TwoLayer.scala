@@ -5,7 +5,7 @@ import java.io.PrintWriter
 
 import zero.functions._
 import zero.minibatch.Sampler
-import zero.util.Matrix.{ randomMatrix, unitVec, unitsOfMatrix }
+import zero.util.Matrix.{ randomMatrix, unitVec, variationMatrix }
 import zero.minibatch.Sampler
 
 class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
@@ -20,7 +20,8 @@ class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
   val dim = shape(0)
 
   def predict(input: DenseMatrix[Double]): DenseMatrix[Double] = {
-    assert(input.rows == dim, "Illegal input size")
+    val r = input.rows
+    assert(r == dim, s"Illegal input size $r != $dim")
 
     val Z1 = Sigmoid(input.t * W1 + B1)
     SoftMax(Z1 * W2 + B2)
@@ -30,7 +31,7 @@ class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
     lossWith(this)(teacher)(input)
 
   def lossWith(model: TwoLayer)(teacher: DenseMatrix[Double])(input: DenseMatrix[Double]) =
-    Loss.cross_entropy(model.predict(input.t), teacher)
+    Loss.cross_entropy(model.predict(input), teacher)
 
   type Overrider = TwoLayer => Unit
   def lossUsing(teacher: DenseMatrix[Double], input: DenseMatrix[Double])(o: Overrider) = {
@@ -51,13 +52,15 @@ class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
   def argmax(seq: Seq[Any]) = seq.zipWithIndex.maxBy(_._2)._1
 
   def accuracy(input: Seq[DenseMatrix[Double]], teacher: Seq[Double]) =
-    if (argmax(input.map(_.t).map(predict)) == argmax(teacher)) 1 else 0
+    if (argmax(input.map(predict)) == argmax(teacher)) 1 else 0
 
   var grad: Map[String, Seq[Double]] = Map()
 
   def gradient(input: DenseMatrix[Double], teacher: DenseMatrix[Double]) = {
     val h = 1e-4
     val f = lossUsing(teacher, input) _
+    
+    assert(input.rows > 1)
 
     type Getter = TwoLayer => DenseMatrix[Double]
     type Setter = TwoLayer => (DenseMatrix[Double] => Unit)
@@ -65,9 +68,12 @@ class TwoLayer(val shape: List[Int] = List(2, 3, 2)) {
     def update(param: Getter)(setter: Setter) = {
       def F(_w: DenseMatrix[Double]): Double = f(setter(_)(_w))
 
-      unitsOfMatrix(param(this))
+      val in = param(this)
+      println(in.toString() + ", " + in.rows + " x " + in.cols)
+    
+      variationMatrix(in.rows, in.cols)
       .map(_ :*= h)
-      .map(dx => (F(param(this) + dx) - F(param(this) - dx)) / (2 * h))
+      .map(dx => (F(param(this) + dx.toDense) - F(param(this) - dx.toDense)) / (2 * h))
     }
 
     grad = Map(
@@ -94,7 +100,7 @@ object TwoLayer {
 
     val logFile = new PrintWriter("log/loss.txt")
 
-    val m = new TwoLayer(List(768, 50, 10))
+    val m = new TwoLayer(List(784, 50, 10))
 
     def trainOnce =
       miniBatch.map(p => {
